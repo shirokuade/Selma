@@ -13,7 +13,7 @@ class TransitApp {
 
         // Initialize TransitService with API key from config
         // If API key is not set or is placeholder, uses simulation mode
-        const apiKey = CONFIG.TRAFIKLAB_API_KEY !== 'YOUR_API_KEY_HERE'
+        const apiKey = CONFIG.TRAFIKLAB_API_KEY !== 'cecc59ae58ee4724b460828cf88aeea8'
             ? CONFIG.TRAFIKLAB_API_KEY
             : null;
 
