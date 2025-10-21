@@ -9,7 +9,7 @@ import TransitService from './services/transitService.js';
 class TransitApp {
     constructor() {
         this.mapService = null;
-        this.transitService = new TransitService(); // No API key = demo mode
+        this.transitService = new TransitService('cecc59ae58ee4724b460828cf88aeea8'); // No API key = demo mode
 
         // DOM elements
         this.elements = {
