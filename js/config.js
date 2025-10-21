@@ -15,7 +15,7 @@
 const CONFIG = {
     // Your Trafiklab API key
     // Replace 'YOUR_API_KEY_HERE' with your actual API key
-    TRAFIKLAB_API_KEY: 'YOUR_API_KEY_HERE',
+    TRAFIKLAB_API_KEY: 'cecc59ae58ee4724b460828cf88aeea8',
 
     // API Endpoints
     API: {
