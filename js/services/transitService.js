@@ -196,12 +196,12 @@ class TransitService {
 
         try {
             // TODO: Implement actual Trafiklab API call
-            // Example endpoint structure (needs verification):
-            // const response = await fetch(
-            //     `https://api.trafiklab.se/v2.1/positions?key=${this.apiKey}&line=14`
-            // );
-            // const data = await response.json();
-            // return this.parseApiResponse(data);
+            //Example endpoint structure (needs verification):
+            const response = await fetch(
+                `https://api.trafiklab.se/v2.1/positions?key=${this.apiKey}&line=14`
+            );
+            const data = await response.json();
+            return this.parseApiResponse(data);
 
             // For now, return simulated data
             return this.simulateVehicles(4);
