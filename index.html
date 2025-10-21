@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Location Map App</title>
+    <title>Stockholm Tunnelbana Line 14 - Real-time Tracker</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -12,39 +12,178 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Transit-specific styles */
+        .transit-header {
+            background: linear-gradient(135deg, #ED1C24 0%, #C5050C 100%);
+        }
+
+        .transit-info-panel {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .line-badge {
+            display: inline-block;
+            background: #ED1C24;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .vehicle-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .station-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .station-item {
+            padding: 6px 10px;
+            border-left: 3px solid #ED1C24;
+            margin-bottom: 6px;
+            background: white;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .legend-icon.vehicle {
+            background: #ED1C24;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .legend-icon.station {
+            background: white;
+            border: 3px solid #ED1C24;
+        }
+
+        @media (max-width: 768px) {
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1>Location Map</h1>
-            <p class="subtitle">Find and display your current location</p>
+        <header class="header transit-header">
+            <h1>🚇 Stockholm Tunnelbana Line 14</h1>
+            <p class="subtitle">Real-time vehicle tracking | Fruängen ↔ Mörby centrum</p>
         </header>
 
         <main class="main-content">
-            <!-- Controls Section -->
-            <div class="controls">
-                <button id="getLocationBtn" class="btn btn-primary">
-                    <span class="btn-icon">📍</span>
-                    Get My Location
-                </button>
-                <div id="statusMessage" class="status-message"></div>
-            </div>
+            <!-- Transit Info Panel -->
+            <div class="transit-info-panel">
+                <div class="info-row">
+                    <div>
+                        <span class="line-badge">Line 14</span>
+                        <span style="color: #666;">Röda linjen (Red Line)</span>
+                    </div>
+                    <div class="vehicle-count">
+                        <span>🚇</span>
+                        <span><strong id="vehicleCount">0</strong> vehicles tracking</span>
+                    </div>
+                </div>
 
-            <!-- Location Info Section -->
-            <div id="locationInfo" class="location-info hidden">
-                <h2>Your Location</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Latitude:</span>
-                        <span id="latitude" class="info-value">-</span>
+                <div class="info-row">
+                    <div>
+                        <strong>Route:</strong> 19.5 km | 19 stations<br>
+                        <small style="color: #666;">Operator: SL (Storstockholms Lokaltrafik)</small>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Longitude:</span>
-                        <span id="longitude" class="info-value">-</span>
+                </div>
+
+                <div class="controls-row">
+                    <button id="startTrackingBtn" class="btn btn-primary">
+                        <span class="btn-icon">▶️</span>
+                        Start Real-time Tracking
+                    </button>
+                    <button id="stopTrackingBtn" class="btn btn-primary" style="display: none;">
+                        <span class="btn-icon">⏸️</span>
+                        Stop Tracking
+                    </button>
+                    <button id="fitRouteBtn" class="btn" style="background: #666; color: white;">
+                        <span class="btn-icon">🗺️</span>
+                        Fit to Route
+                    </button>
+                    <button id="toggleStationsBtn" class="btn" style="background: #666; color: white;">
+                        <span class="btn-icon">📍</span>
+                        <span id="stationsToggleText">Show Stations</span>
+                    </button>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-icon vehicle"></span>
+                        <span>Metro Vehicle</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Accuracy:</span>
-                        <span id="accuracy" class="info-value">-</span>
+                    <div class="legend-item">
+                        <span class="legend-icon station"></span>
+                        <span>Station</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 30px; height: 3px; background: #ED1C24;"></div>
+                        <span>Route Line</span>
                     </div>
                 </div>
             </div>
@@ -53,10 +192,16 @@
             <div id="mapContainer" class="map-container">
                 <div id="map"></div>
             </div>
+
+            <!-- Station List (collapsible) -->
+            <div class="transit-info-panel" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 10px;">📍 Line 14 Stations</h3>
+                <div class="station-list" id="stationList"></div>
+            </div>
         </main>
 
         <footer class="footer">
-            <p>Built with Leaflet.js | Modular architecture for easy extension | <a href="transit.html" style="color: #3b82f6;">View Stockholm Tunnelbana Line 14 →</a></p>
+            <p>Built with Leaflet.js | Data: SL (Demo Mode) | <a href="location.html" style="color: #3b82f6;">← Back to Location Map</a></p>
         </footer>
     </div>
 
@@ -65,7 +210,7 @@
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
 
-    <!-- App JS Modules -->
-    <script type="module" src="js/app.js"></script>
+    <!-- Transit App JS Modules -->
+    <script type="module" src="js/transitApp.js"></script>
 </body>
 </html>

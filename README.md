@@ -25,17 +25,17 @@ A clean, modular web application that gets the user's current location and displ
 
 ```
 Selma/
-├── index.html              # Main location tracking page
-├── transit.html            # Transit visualization page (NEW!)
+├── index.html              # Transit visualization page (DEFAULT - GitHub Pages)
+├── location.html           # Location tracking page
 ├── css/
 │   └── styles.css         # Application styling
 ├── js/
-│   ├── app.js             # Main application controller
-│   ├── transitApp.js      # Transit app controller (NEW!)
+│   ├── app.js             # Location app controller
+│   ├── transitApp.js      # Transit app controller
 │   └── services/
 │       ├── locationService.js  # Geolocation service module
 │       ├── mapService.js       # Map service module (enhanced)
-│       └── transitService.js   # Transit data service (NEW!)
+│       └── transitService.js   # Transit data service
 └── README.md
 ```
 
@@ -74,26 +74,26 @@ The app follows a modular architecture with clear separation of concerns:
 
 ## Usage
 
-### Running the Location Map
+### Running the Transit Visualization (Default Page)
 
-1. Clone the repository
-2. Open `index.html` in a modern web browser
-3. Click "Get My Location" button
-4. Allow location access when prompted
-5. Your location will be displayed on the map
-
-### Running the Transit Visualization
-
-1. Open `transit.html` in a modern web browser (or use local server)
-2. The map will display Stockholm Tunnelbana Line 14 route
-3. Click "Start Real-time Tracking" to see simulated vehicles
-4. Click "Show Stations" to display all 19 station markers
-5. Click on vehicles or stations for detailed information
-6. Use "Fit to Route" to center the map on the entire line
+1. Clone the repository or visit your GitHub Pages URL
+2. Open `index.html` in a modern web browser (default page)
+3. The map will display Stockholm Tunnelbana Line 14 route
+4. Click "Start Real-time Tracking" to see simulated vehicles
+5. Click "Show Stations" to display all 19 station markers
+6. Click on vehicles or stations for detailed information
+7. Use "Fit to Route" to center the map on the entire line
 
 **Note:** Currently runs in demo mode with simulated vehicles. To use real-time data:
 - Get a free API key from [Trafiklab](https://www.trafiklab.se/)
 - Pass the API key when initializing TransitService in `transitApp.js`
+
+### Running the Location Map
+
+1. Open `location.html` in a modern web browser
+2. Click "Get My Location" button
+3. Allow location access when prompted
+4. Your location will be displayed on the map
 
 ### Browser Compatibility
 
