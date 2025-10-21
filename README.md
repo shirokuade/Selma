@@ -205,19 +205,26 @@ transitApp.mapService.addVehicle({
 
 ## API Integration
 
-### Trafiklab API Setup
+### Trafiklab API Setup (Real-Time Data)
 
-To use real-time transit data instead of simulation:
+The app currently runs in **demo mode** with simulated vehicles. To use **real-time data**:
 
-1. Visit [Trafiklab](https://www.trafiklab.se/) and create a free account
-2. Register for API access to SL real-time data
-3. Get your API key from the dashboard
-4. Update `js/transitApp.js`:
+**Quick Setup:**
+1. Get a free API key from [Trafiklab](https://www.trafiklab.se/)
+2. Open `js/config.js` and add your API key:
 ```javascript
-this.transitService = new TransitService('YOUR_API_KEY_HERE');
+TRAFIKLAB_API_KEY: 'your-actual-api-key-here',
 ```
+3. Refresh the page - real-time data will load automatically!
 
-The TransitService is designed to seamlessly switch between simulation mode and real API data.
+**📖 Full Setup Guide:** See [API_SETUP.md](API_SETUP.md) for:
+- Complete setup instructions
+- Troubleshooting CORS issues
+- Security considerations
+- API rate limits and optimization
+- Advanced configuration options
+
+The TransitService automatically switches between simulation and real-time modes based on API key configuration.
 
 ## License
 

@@ -2,14 +2,40 @@
  * Transit Service Module
  * Handles transit data, real-time vehicle tracking, and route information
  * Designed for Stockholm Tunnelbana Line 14 (Red Line)
+ * Supports both real Trafiklab GTFS-RT API and simulation mode
  */
 
 class TransitService {
-    constructor(apiKey = null) {
+    constructor(apiKey = null, options = {}) {
         this.apiKey = apiKey; // Trafiklab API key (optional for demo mode)
         this.vehicles = new Map();
         this.updateInterval = null;
-        this.isSimulationMode = !apiKey; // Use simulation if no API key provided
+        this.isSimulationMode = !apiKey || apiKey === 'YOUR_API_KEY_HERE';
+        this.lastFetchTime = null;
+        this.errorCount = 0;
+        this.maxErrors = 3; // Switch to simulation after 3 consecutive errors
+
+        // API endpoints
+        this.endpoints = {
+            primary: 'https://opendata.samtrafiken.se/gtfs-rt/sl/VehiclePositions.pb',
+            alternative: 'https://opendata.samtrafiken.se/gtfs-rt-sweden/sl/VehiclePositionsSweden.pb'
+        };
+
+        // Configuration
+        this.config = {
+            lineId: '14',
+            routePatterns: ['14', 'T14', 'Red14', 'Röda linjen 14'],
+            useCorsProxy: options.useCorsProxy || false,
+            corsProxyUrl: options.corsProxyUrl || 'https://corsproxy.io/?',
+            enableFallback: options.enableFallback !== false,
+            ...options
+        };
+
+        if (this.isSimulationMode) {
+            console.log('🎮 Transit Service initialized in SIMULATION mode');
+        } else {
+            console.log('🚇 Transit Service initialized with API key for REAL-TIME data');
+        }
     }
 
     /**
@@ -49,6 +75,173 @@ class TransitService {
     }
 
     /**
+     * Fetch real-time data from Trafiklab GTFS-RT API
+     * @returns {Promise<Array>} Vehicle positions
+     */
+    async fetchRealTimeData() {
+        if (this.isSimulationMode) {
+            console.log('📡 Simulation mode active - using simulated vehicles');
+            return this.simulateVehicles(4);
+        }
+
+        try {
+            console.log('📡 Fetching real-time data from Trafiklab API...');
+
+            // Construct API URL with key
+            let apiUrl = `${this.endpoints.primary}?key=${this.apiKey}`;
+
+            // Use CORS proxy if configured
+            if (this.config.useCorsProxy) {
+                apiUrl = this.config.corsProxyUrl + encodeURIComponent(apiUrl);
+                console.log('🔄 Using CORS proxy:', this.config.corsProxyUrl);
+            }
+
+            // Fetch the protobuf data
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            // Get response as ArrayBuffer
+            const arrayBuffer = await response.arrayBuffer();
+
+            // Try to parse the protobuf data
+            const vehicles = await this.parseGTFSRealtimeProtobuf(arrayBuffer);
+
+            // Filter for Line 14 only
+            const line14Vehicles = this.filterLine14Vehicles(vehicles);
+
+            console.log(`✅ Received ${vehicles.length} total vehicles, ${line14Vehicles.length} on Line 14`);
+
+            this.errorCount = 0; // Reset error count on success
+            this.lastFetchTime = new Date();
+
+            return line14Vehicles.length > 0 ? line14Vehicles : this.simulateVehicles(4);
+
+        } catch (error) {
+            console.error('❌ Error fetching real-time data:', error);
+            this.errorCount++;
+
+            if (this.errorCount >= this.maxErrors && this.config.enableFallback) {
+                console.warn(`⚠️  Switching to simulation mode after ${this.maxErrors} consecutive errors`);
+                this.isSimulationMode = true;
+            }
+
+            // Return simulated data as fallback
+            return this.simulateVehicles(4);
+        }
+    }
+
+    /**
+     * Parse GTFS Realtime protobuf data
+     * Note: This requires gtfs-realtime-bindings library or manual protobuf parsing
+     * @param {ArrayBuffer} arrayBuffer - Protobuf data
+     * @returns {Promise<Array>} Parsed vehicle positions
+     */
+    async parseGTFSRealtimeProtobuf(arrayBuffer) {
+        // Check if gtfs-realtime-bindings library is loaded
+        if (typeof GtfsRealtimeBindings !== 'undefined') {
+            try {
+                const uint8Array = new Uint8Array(arrayBuffer);
+                const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(uint8Array);
+
+                const vehicles = [];
+
+                feed.entity.forEach(entity => {
+                    if (entity.vehicle && entity.vehicle.position) {
+                        const vehicle = entity.vehicle;
+                        const position = vehicle.position;
+                        const trip = vehicle.trip;
+
+                        vehicles.push({
+                            id: entity.id || vehicle.vehicle?.id || 'Unknown',
+                            lat: position.latitude,
+                            lng: position.longitude,
+                            bearing: position.bearing || 0,
+                            speed: position.speed ? position.speed * 3.6 : 0, // Convert m/s to km/h
+                            timestamp: vehicle.timestamp || Date.now() / 1000,
+                            routeId: trip?.routeId || '',
+                            tripId: trip?.tripId || '',
+                            stopId: vehicle.stopId || '',
+                            currentStatus: vehicle.currentStatus || 'IN_TRANSIT_TO'
+                        });
+                    }
+                });
+
+                return vehicles;
+            } catch (error) {
+                console.error('Error parsing protobuf with gtfs-realtime-bindings:', error);
+                throw error;
+            }
+        } else {
+            console.warn('⚠️  gtfs-realtime-bindings library not loaded');
+            console.info('💡 To use real-time data, include the library in your HTML:');
+            console.info('<script src="https://cdn.jsdelivr.net/npm/gtfs-realtime-bindings@1.1.0/dist/bundle.js"></script>');
+            throw new Error('GTFS Realtime bindings library not available');
+        }
+    }
+
+    /**
+     * Filter vehicles for Line 14 only
+     * @param {Array} vehicles - All vehicles
+     * @returns {Array} Line 14 vehicles
+     */
+    filterLine14Vehicles(vehicles) {
+        return vehicles.filter(vehicle => {
+            const routeId = vehicle.routeId?.toString() || '';
+            return this.config.routePatterns.some(pattern =>
+                routeId.includes(pattern) || routeId === this.config.lineId
+            );
+        }).map(vehicle => this.convertToStandardFormat(vehicle));
+    }
+
+    /**
+     * Convert GTFS-RT vehicle to our standard format
+     * @param {Object} vehicle - GTFS-RT vehicle
+     * @returns {Object} Standard format vehicle
+     */
+    convertToStandardFormat(vehicle) {
+        const stations = this.getLine14Stations();
+
+        // Determine direction based on position or bearing
+        const direction = this.determineDirection(vehicle, stations);
+        const destinationStation = direction === 'north'
+            ? stations[stations.length - 1].name
+            : stations[0].name;
+
+        return {
+            id: vehicle.id,
+            line: '14',
+            lat: vehicle.lat,
+            lng: vehicle.lng,
+            direction: direction,
+            destination: destinationStation,
+            speed: vehicle.speed || 0,
+            nextStation: this.getNextStation(stations, vehicle, direction),
+            bearing: vehicle.bearing || this.calculateBearing(stations, vehicle, direction),
+            timestamp: vehicle.timestamp
+        };
+    }
+
+    /**
+     * Determine vehicle direction based on position
+     * @param {Object} vehicle - Vehicle object
+     * @param {Array} stations - Station list
+     * @returns {string} Direction ('north' or 'south')
+     */
+    determineDirection(vehicle, stations) {
+        // Simple heuristic: if bearing > 180, going south; otherwise north
+        if (vehicle.bearing) {
+            return vehicle.bearing > 180 ? 'south' : 'north';
+        }
+
+        // Fallback: find closest station and use position relative to middle
+        const midPoint = stations[Math.floor(stations.length / 2)];
+        return vehicle.lat > midPoint.lat ? 'north' : 'south';
+    }
+
+    /**
      * Simulate vehicle positions (demo mode)
      * @param {number} vehicleCount - Number of vehicles to simulate
      * @returns {Array} Array of vehicle objects with positions
@@ -70,7 +263,7 @@ class TransitService {
                 : stations[0].name;
 
             vehicles.push({
-                id: `T14-${i + 1}`,
+                id: `T14-SIM-${i + 1}`,
                 line: '14',
                 lat: position.lat,
                 lng: position.lng,
@@ -151,27 +344,23 @@ class TransitService {
      * @param {Function} callback - Called with updated vehicle data
      * @param {number} interval - Update interval in milliseconds
      */
-    startRealtimeUpdates(callback, interval = 5000) {
+    startRealtimeUpdates(callback, interval = 10000) {
         if (this.updateInterval) {
             this.stopRealtimeUpdates();
         }
 
-        // Initial update
-        const updateVehicles = () => {
-            let vehicles;
-
-            if (this.isSimulationMode) {
-                vehicles = this.simulateVehicles(4);
-            } else {
-                // TODO: Implement real API call to Trafiklab
-                vehicles = this.fetchRealTimeData();
-            }
-
+        const updateVehicles = async () => {
+            const vehicles = await this.fetchRealTimeData();
             callback(vehicles);
         };
 
+        // Initial update
         updateVehicles();
+
+        // Set up interval for continuous updates
         this.updateInterval = setInterval(updateVehicles, interval);
+
+        console.log(`⏰ Real-time updates started (interval: ${interval}ms)`);
     }
 
     /**
@@ -181,42 +370,8 @@ class TransitService {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
+            console.log('⏸️  Real-time updates stopped');
         }
-    }
-
-    /**
-     * Fetch real-time data from Trafiklab API
-     * @returns {Promise<Array>} Vehicle positions
-     */
-    async fetchRealTimeData() {
-        if (!this.apiKey) {
-            console.warn('No API key provided, using simulation mode');
-            return this.simulateVehicles(4);
-        }
-
-        try {
-            // TODO: Implement actual Trafiklab API call
-            //Example endpoint structure (needs verification):
-            const response = await fetch(
-                `https://api.trafiklab.se/v2.1/positions?key=${this.apiKey}&line=14`
-            );
-            const data = await response.json();
-            return this.parseApiResponse(data);
-
-            // For now, return simulated data
-            return this.simulateVehicles(4);
-        } catch (error) {
-            console.error('Error fetching real-time data:', error);
-            return this.simulateVehicles(4);
-        }
-    }
-
-    /**
-     * Parse API response and convert to standard format
-     */
-    parseApiResponse(data) {
-        // TODO: Implement based on actual API response structure
-        return [];
     }
 
     /**
@@ -230,7 +385,21 @@ class TransitService {
             type: 'metro',
             operator: 'SL (Storstockholms Lokaltrafik)',
             length: '19.5 km',
-            stations: 19
+            stations: 19,
+            mode: this.isSimulationMode ? 'SIMULATION' : 'REAL-TIME'
+        };
+    }
+
+    /**
+     * Get service status
+     */
+    getStatus() {
+        return {
+            mode: this.isSimulationMode ? 'simulation' : 'real-time',
+            apiKey: this.apiKey ? '✓ Configured' : '✗ Not configured',
+            lastFetch: this.lastFetchTime,
+            errorCount: this.errorCount,
+            endpoint: this.endpoints.primary
         };
     }
 }

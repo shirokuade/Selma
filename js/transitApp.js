@@ -5,11 +5,23 @@
 
 import MapService from './services/mapService.js';
 import TransitService from './services/transitService.js';
+import CONFIG from './config.js';
 
 class TransitApp {
     constructor() {
         this.mapService = null;
-        this.transitService = new TransitService('cecc59ae58ee4724b460828cf88aeea8'); // No API key = demo mode
+
+        // Initialize TransitService with API key from config
+        // If API key is not set or is placeholder, uses simulation mode
+        const apiKey = CONFIG.TRAFIKLAB_API_KEY !== 'YOUR_API_KEY_HERE'
+            ? CONFIG.TRAFIKLAB_API_KEY
+            : null;
+
+        // Initialize with API key and optional CORS proxy config
+        this.transitService = new TransitService(apiKey, {
+            useCorsProxy: false, // Set to true if you encounter CORS issues
+            corsProxyUrl: 'https://corsproxy.io/?'
+        });
 
         // DOM elements
         this.elements = {
