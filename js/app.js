@@ -36,6 +36,11 @@ class App {
             });
             this.mapService.initialize();
 
+            // Fix map rendering issue - invalidate size after a short delay
+            setTimeout(() => {
+                this.mapService.invalidateSize();
+            }, 100);
+
             // Set up event listeners
             this.setupEventListeners();
 
@@ -145,9 +150,20 @@ class App {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new App();
-    app.init();
+    // Wait for Leaflet to be available
+    const initializeApp = () => {
+        if (typeof L === 'undefined') {
+            console.log('Waiting for Leaflet to load...');
+            setTimeout(initializeApp, 50);
+            return;
+        }
 
-    // Make app globally available for debugging
-    window.app = app;
+        const app = new App();
+        app.init();
+
+        // Make app globally available for debugging
+        window.app = app;
+    };
+
+    initializeApp();
 });
