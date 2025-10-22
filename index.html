@@ -209,6 +209,22 @@
                 </div>
 
                 <div id="rawDataContainer" style="display: none;">
+                    <!-- Verbose Console Log -->
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>📋 Verbose Console Log (Real-time)</strong>
+                            <button id="clearLogBtn" class="btn" style="background: #ef4444; color: white; padding: 4px 10px; font-size: 0.85rem;">
+                                Clear Log
+                            </button>
+                        </div>
+                        <div id="verboseLog" style="background: #0a0a0a; color: #00ff00; padding: 15px; border-radius: 6px; height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4;">
+                            <div style="color: #888;">
+                                [System] Verbose logging initialized. Waiting for activity...<br>
+                                [System] Click "Start Real-time Tracking" to begin monitoring.<br>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- API Status -->
                     <div style="background: #f0f0f0; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
                         <strong>API Status:</strong>

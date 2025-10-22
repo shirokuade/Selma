@@ -37,6 +37,8 @@ class TransitApp {
             toggleRawDataBtn: document.getElementById('toggleRawDataBtn'),
             rawDataToggleText: document.getElementById('rawDataToggleText'),
             rawDataContainer: document.getElementById('rawDataContainer'),
+            verboseLog: document.getElementById('verboseLog'),
+            clearLogBtn: document.getElementById('clearLogBtn'),
             apiStatus: document.getElementById('apiStatus'),
             parsedVehicleData: document.getElementById('parsedVehicleData'),
             rawGtfsData: document.getElementById('rawGtfsData'),
@@ -51,6 +53,97 @@ class TransitApp {
         this.stations = [];
         this.updateCounter = 0;
         this.rawGtfsFeed = null;
+        this.logEntries = [];
+
+        // Initialize verbose logging
+        this.initializeVerboseLogging();
+    }
+
+    /**
+     * Initialize verbose logging - intercept console methods
+     */
+    initializeVerboseLogging() {
+        // Store original console methods
+        const originalConsole = {
+            log: console.log,
+            info: console.info,
+            warn: console.warn,
+            error: console.error
+        };
+
+        // Create verbose logger
+        const createLogger = (level, color, originalMethod) => {
+            return (...args) => {
+                // Call original console method
+                originalMethod.apply(console, args);
+
+                // Log to page
+                const message = args.map(arg => {
+                    if (typeof arg === 'object') {
+                        try {
+                            return JSON.stringify(arg, null, 2);
+                        } catch (e) {
+                            return String(arg);
+                        }
+                    }
+                    return String(arg);
+                }).join(' ');
+
+                this.logToPage(level, message, color);
+            };
+        };
+
+        // Intercept console methods
+        console.log = createLogger('LOG', '#00ff00', originalConsole.log);
+        console.info = createLogger('INFO', '#00bfff', originalConsole.info);
+        console.warn = createLogger('WARN', '#ffa500', originalConsole.warn);
+        console.error = createLogger('ERROR', '#ff4444', originalConsole.error);
+
+        this.logToPage('SYSTEM', 'Verbose logging interceptor installed', '#888');
+    }
+
+    /**
+     * Log message to page
+     */
+    logToPage(level, message, color = '#00ff00') {
+        if (!this.elements.verboseLog) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.style.color = color;
+        logEntry.style.marginBottom = '2px';
+        logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> <strong>[${level}]</strong> ${this.escapeHtml(message)}`;
+
+        this.elements.verboseLog.appendChild(logEntry);
+        this.logEntries.push(logEntry);
+
+        // Auto-scroll to bottom
+        this.elements.verboseLog.scrollTop = this.elements.verboseLog.scrollHeight;
+
+        // Limit log entries to prevent memory issues
+        if (this.logEntries.length > 500) {
+            const oldEntry = this.logEntries.shift();
+            oldEntry.remove();
+        }
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Clear verbose log
+     */
+    clearVerboseLog() {
+        if (this.elements.verboseLog) {
+            this.elements.verboseLog.innerHTML = '<div style="color: #888;">[System] Log cleared.</div>';
+            this.logEntries = [];
+        }
     }
 
     /**
@@ -117,6 +210,10 @@ class TransitApp {
 
         this.elements.toggleRawDataBtn.addEventListener('click', () => {
             this.toggleRawData();
+        });
+
+        this.elements.clearLogBtn.addEventListener('click', () => {
+            this.clearVerboseLog();
         });
     }
 
