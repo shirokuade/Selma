@@ -198,6 +198,49 @@
                 <h3 style="margin-bottom: 10px;">📍 Line 14 Stations</h3>
                 <div class="station-list" id="stationList"></div>
             </div>
+
+            <!-- Raw API Data Viewer (Developer Mode) -->
+            <div class="transit-info-panel" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3>🔧 API Data Viewer (Debug)</h3>
+                    <button id="toggleRawDataBtn" class="btn" style="background: #666; color: white; padding: 6px 12px; font-size: 0.9rem;">
+                        <span id="rawDataToggleText">Show Raw Data</span>
+                    </button>
+                </div>
+
+                <div id="rawDataContainer" style="display: none;">
+                    <!-- API Status -->
+                    <div style="background: #f0f0f0; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong>API Status:</strong>
+                        <div id="apiStatus" style="margin-top: 8px; font-family: monospace; font-size: 0.9rem;">
+                            Waiting for data...
+                        </div>
+                    </div>
+
+                    <!-- Parsed Vehicle Data -->
+                    <div style="margin-bottom: 15px;">
+                        <strong>Parsed Vehicle Data (Line 14):</strong>
+                        <div style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 8px;">
+                            <pre id="parsedVehicleData" style="margin: 0; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">No data yet. Click "Start Real-time Tracking"</pre>
+                        </div>
+                    </div>
+
+                    <!-- Raw GTFS-RT Data -->
+                    <div style="margin-bottom: 15px;">
+                        <strong>Raw GTFS Realtime Feed (All Vehicles):</strong>
+                        <div style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 8px; max-height: 400px; overflow-y: auto;">
+                            <pre id="rawGtfsData" style="margin: 0; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">No raw data available</pre>
+                        </div>
+                    </div>
+
+                    <!-- Last Update Info -->
+                    <div style="background: #e8f4f8; padding: 10px; border-radius: 6px; font-size: 0.9rem;">
+                        <strong>Last Update:</strong> <span id="lastUpdateTime">Never</span><br>
+                        <strong>Data Source:</strong> <span id="dataSource">Unknown</span><br>
+                        <strong>Update Count:</strong> <span id="updateCount">0</span>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <footer class="footer">

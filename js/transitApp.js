@@ -32,12 +32,25 @@ class TransitApp {
             stationsToggleText: document.getElementById('stationsToggleText'),
             statusMessage: document.getElementById('statusMessage'),
             vehicleCount: document.getElementById('vehicleCount'),
-            stationList: document.getElementById('stationList')
+            stationList: document.getElementById('stationList'),
+            // Raw data viewer elements
+            toggleRawDataBtn: document.getElementById('toggleRawDataBtn'),
+            rawDataToggleText: document.getElementById('rawDataToggleText'),
+            rawDataContainer: document.getElementById('rawDataContainer'),
+            apiStatus: document.getElementById('apiStatus'),
+            parsedVehicleData: document.getElementById('parsedVehicleData'),
+            rawGtfsData: document.getElementById('rawGtfsData'),
+            lastUpdateTime: document.getElementById('lastUpdateTime'),
+            dataSource: document.getElementById('dataSource'),
+            updateCount: document.getElementById('updateCount')
         };
 
         this.isTracking = false;
         this.showStations = false;
+        this.showRawData = false;
         this.stations = [];
+        this.updateCounter = 0;
+        this.rawGtfsFeed = null;
     }
 
     /**
@@ -100,6 +113,10 @@ class TransitApp {
 
         this.elements.toggleStationsBtn.addEventListener('click', () => {
             this.toggleStations();
+        });
+
+        this.elements.toggleRawDataBtn.addEventListener('click', () => {
+            this.toggleRawData();
         });
     }
 
@@ -169,6 +186,10 @@ class TransitApp {
     updateVehicles(vehicles) {
         this.mapService.updateVehicles(vehicles);
         this.elements.vehicleCount.textContent = vehicles.length;
+
+        // Update raw data display
+        this.updateCounter++;
+        this.updateRawDataDisplay(vehicles);
     }
 
     /**
@@ -214,6 +235,81 @@ class TransitApp {
      */
     hideStatus() {
         this.elements.statusMessage.classList.remove('show');
+    }
+
+    /**
+     * Toggle raw data viewer visibility
+     */
+    toggleRawData() {
+        this.showRawData = !this.showRawData;
+
+        if (this.showRawData) {
+            this.elements.rawDataContainer.style.display = 'block';
+            this.elements.rawDataToggleText.textContent = 'Hide Raw Data';
+        } else {
+            this.elements.rawDataContainer.style.display = 'none';
+            this.elements.rawDataToggleText.textContent = 'Show Raw Data';
+        }
+    }
+
+    /**
+     * Update raw data display
+     * @param {Array} vehicles - Parsed vehicle data
+     */
+    updateRawDataDisplay(vehicles) {
+        // Update timestamp
+        const now = new Date();
+        this.elements.lastUpdateTime.textContent = now.toLocaleTimeString();
+        this.elements.updateCount.textContent = this.updateCounter;
+
+        // Update data source
+        const status = this.transitService.getStatus();
+        this.elements.dataSource.textContent = status.mode === 'simulation'
+            ? '🎮 Simulation Mode'
+            : '📡 Trafiklab API (Real-time)';
+
+        // Update API status
+        const apiStatusHtml = `
+            <strong>Mode:</strong> ${status.mode}<br>
+            <strong>API Key:</strong> ${status.apiKey}<br>
+            <strong>Endpoint:</strong> ${status.endpoint}<br>
+            <strong>Error Count:</strong> ${status.errorCount}<br>
+            <strong>Last Fetch:</strong> ${status.lastFetch ? status.lastFetch.toLocaleTimeString() : 'Never'}
+        `;
+        this.elements.apiStatus.innerHTML = apiStatusHtml;
+
+        // Update parsed vehicle data
+        const parsedDataJson = JSON.stringify(vehicles, null, 2);
+        this.elements.parsedVehicleData.textContent = parsedDataJson;
+
+        // Update raw GTFS data if available
+        if (this.transitService.rawGtfsFeed) {
+            try {
+                // Convert the GTFS feed to a readable format
+                const rawDataJson = JSON.stringify(this.transitService.rawGtfsFeed, (key, value) => {
+                    // Handle special protobuf types
+                    if (value && typeof value === 'object') {
+                        // If it's a Long number, convert to string
+                        if (value.low !== undefined && value.high !== undefined) {
+                            return value.toString();
+                        }
+                        // If it has a toJSON method, use it
+                        if (typeof value.toJSON === 'function') {
+                            return value.toJSON();
+                        }
+                    }
+                    return value;
+                }, 2);
+
+                this.elements.rawGtfsData.textContent = rawDataJson;
+            } catch (error) {
+                this.elements.rawGtfsData.textContent = 'Error formatting raw GTFS data: ' + error.message;
+            }
+        } else {
+            this.elements.rawGtfsData.textContent = status.mode === 'simulation'
+                ? 'No raw GTFS data (simulation mode active)'
+                : 'Raw GTFS data not available yet';
+        }
     }
 
     /**

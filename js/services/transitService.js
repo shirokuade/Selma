@@ -14,6 +14,7 @@ class TransitService {
         this.lastFetchTime = null;
         this.errorCount = 0;
         this.maxErrors = 3; // Switch to simulation after 3 consecutive errors
+        this.rawGtfsFeed = null; // Store raw GTFS feed for debugging
 
         // API endpoints
         this.endpoints = {
@@ -145,6 +146,9 @@ class TransitService {
             try {
                 const uint8Array = new Uint8Array(arrayBuffer);
                 const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(uint8Array);
+
+                // Store raw GTFS feed for debugging purposes
+                this.rawGtfsFeed = feed;
 
                 const vehicles = [];
 
