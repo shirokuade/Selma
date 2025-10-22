@@ -270,9 +270,11 @@
             crossorigin=""></script>
 
     <!-- GTFS Realtime Bindings for protobuf parsing -->
-    <script src="https://cdn.jsdelivr.net/npm/gtfs-realtime-bindings@1.1.0/dist/bundle.js"></script>
+    <!-- Try multiple CDNs for reliability -->
+    <script src="https://unpkg.com/gtfs-realtime-bindings@1.1.0/dist/bundle.js"
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/gtfs-realtime-bindings@1.1.0/dist/bundle.js'"></script>
 
-    <!-- Transit App JS Modules -->
+    <!-- Transit App JS Modules - Load after library is available -->
     <script type="module" src="js/transitApp.js"></script>
 </body>
 </html>

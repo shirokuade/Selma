@@ -422,13 +422,23 @@ class TransitApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Wait for Leaflet to be available
+    // Wait for required libraries to be available
     const initializeApp = () => {
         if (typeof L === 'undefined') {
-            console.log('Waiting for Leaflet to load...');
+            console.log('⏳ Waiting for Leaflet to load...');
             setTimeout(initializeApp, 50);
             return;
         }
+
+        if (typeof window.GtfsRealtimeBindings === 'undefined') {
+            console.log('⏳ Waiting for GTFS Realtime library to load...');
+            setTimeout(initializeApp, 50);
+            return;
+        }
+
+        console.log('✅ All libraries loaded successfully');
+        console.log('  - Leaflet:', typeof L);
+        console.log('  - GtfsRealtimeBindings:', typeof window.GtfsRealtimeBindings);
 
         const app = new TransitApp();
         app.init();
