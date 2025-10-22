@@ -10,7 +10,7 @@ class TransitService {
         this.apiKey = apiKey; // Trafiklab API key (optional for demo mode)
         this.vehicles = new Map();
         this.updateInterval = null;
-        this.isSimulationMode = !apiKey || apiKey === 'YOUR_API_KEY_HERE';
+        this.isSimulationMode = !apiKey || apiKey === 'cecc59ae58ee4724b460828cf88aeea8';
         this.lastFetchTime = null;
         this.errorCount = 0;
         this.maxErrors = 3; // Switch to simulation after 3 consecutive errors
