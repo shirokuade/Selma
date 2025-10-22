@@ -3,15 +3,22 @@
  * Simple app for fetching and displaying Trafiklab GTFS-RT data
  */
 
+console.log('🚀 app.js module loaded');
+
 import CONFIG from './config.js';
 
 class SelmaEngine {
     constructor() {
+        console.log('🏗️ SelmaEngine constructor called');
+
         this.apiKey = CONFIG.TRAFIKLAB_API_KEY;
         this.apiEndpoint = CONFIG.API.VEHICLE_POSITIONS;
         this.updateInterval = null;
         this.updateCount = 0;
         this.isRunning = false;
+
+        console.log('📋 API Key:', this.apiKey ? 'Configured' : 'Missing');
+        console.log('📡 API Endpoint:', this.apiEndpoint);
 
         // DOM elements
         this.elements = {
@@ -87,9 +94,22 @@ class SelmaEngine {
      * Attach event listeners
      */
     attachEventListeners() {
-        this.elements.startBtn.addEventListener('click', () => this.start());
+        console.log('🔗 Attaching event listeners...');
+        console.log('  - startBtn element:', this.elements.startBtn);
+
+        if (!this.elements.startBtn) {
+            console.error('❌ startBtn element not found!');
+            return;
+        }
+
+        this.elements.startBtn.addEventListener('click', () => {
+            console.log('🖱️ Start button clicked!');
+            this.start();
+        });
         this.elements.stopBtn.addEventListener('click', () => this.stop());
         this.elements.clearLogBtn.addEventListener('click', () => this.clearLog());
+
+        console.log('✅ Event listeners attached successfully');
     }
 
     /**
@@ -327,21 +347,39 @@ class SelmaEngine {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM Content Loaded - Starting initialization...');
+
+    let waitCount = 0;
+
     // Wait for GTFS library to be available
     const initializeApp = () => {
         if (typeof window.GtfsRealtimeBindings === 'undefined') {
-            console.log('⏳ Waiting for GTFS Realtime library to load...');
+            waitCount++;
+            console.log(`⏳ Waiting for GTFS Realtime library to load... (attempt ${waitCount})`);
+
+            if (waitCount > 100) { // 5 seconds timeout
+                console.error('❌ GTFS Realtime library failed to load after 5 seconds');
+                console.error('Please check if the CDN is accessible');
+                return;
+            }
+
             setTimeout(initializeApp, 50);
             return;
         }
 
         console.log('✅ GTFS Realtime library loaded successfully');
         console.log('  - GtfsRealtimeBindings:', typeof window.GtfsRealtimeBindings);
+        console.log('  - Waited:', waitCount * 50, 'ms');
 
-        const app = new SelmaEngine();
-        window.selmaEngine = app; // Make globally available for debugging
+        try {
+            const app = new SelmaEngine();
+            window.selmaEngine = app; // Make globally available for debugging
 
-        console.log('Selma Core Engine initialized and ready');
+            console.log('✅ Selma Core Engine initialized and ready');
+            console.log('👉 Click "Start Fetching Data" button to begin');
+        } catch (error) {
+            console.error('❌ Error initializing Selma Engine:', error);
+        }
     };
 
     initializeApp();
