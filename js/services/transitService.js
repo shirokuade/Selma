@@ -202,11 +202,11 @@ class TransitService {
      * @returns {Promise<Array>} Parsed vehicle positions
      */
     async parseGTFSRealtimeProtobuf(arrayBuffer) {
-        // Check if gtfs-realtime-bindings library is loaded
-        if (typeof GtfsRealtimeBindings !== 'undefined') {
+        // Check if gtfs-realtime-bindings library is loaded (access via window for ES6 modules)
+        if (typeof window.GtfsRealtimeBindings !== 'undefined') {
             try {
                 const uint8Array = new Uint8Array(arrayBuffer);
-                const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(uint8Array);
+                const feed = window.GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(uint8Array);
 
                 // Store raw GTFS feed for debugging purposes
                 this.rawGtfsFeed = feed;
