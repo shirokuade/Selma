@@ -10,11 +10,23 @@ class TransitService {
         this.apiKey = apiKey; // Trafiklab API key (optional for demo mode)
         this.vehicles = new Map();
         this.updateInterval = null;
-        this.isSimulationMode = !apiKey || apiKey === 'cecc59ae58ee4724b460828cf88aeea8';
         this.lastFetchTime = null;
         this.errorCount = 0;
         this.maxErrors = 3; // Switch to simulation after 3 consecutive errors
         this.rawGtfsFeed = null; // Store raw GTFS feed for debugging
+
+        // FORCE REAL-TIME MODE - Debug logging
+        console.log('🔍 [DEBUG] API Key received:', apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}` : 'NULL');
+        console.log('🔍 [DEBUG] API Key length:', apiKey ? apiKey.length : 0);
+        console.log('🔍 [DEBUG] API Key type:', typeof apiKey);
+
+        // Determine if simulation mode (STRICT CHECK)
+        this.isSimulationMode = !apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey.trim() === '';
+
+        console.log('🔍 [DEBUG] Simulation mode check results:');
+        console.log('  - !apiKey:', !apiKey);
+        console.log('  - apiKey === placeholder:', apiKey === 'YOUR_API_KEY_HERE');
+        console.log('  - Final isSimulationMode:', this.isSimulationMode);
 
         // API endpoints
         this.endpoints = {
@@ -29,13 +41,16 @@ class TransitService {
             useCorsProxy: options.useCorsProxy || false,
             corsProxyUrl: options.corsProxyUrl || 'https://corsproxy.io/?',
             enableFallback: options.enableFallback !== false,
+            forceRealTime: true, // FORCE REAL-TIME MODE
             ...options
         };
 
         if (this.isSimulationMode) {
             console.log('🎮 Transit Service initialized in SIMULATION mode');
+            console.warn('⚠️  SIMULATION MODE ACTIVE - Check API key configuration!');
         } else {
             console.log('🚇 Transit Service initialized with API key for REAL-TIME data');
+            console.log('📡 Will fetch from:', this.endpoints.primary);
         }
     }
 
@@ -80,8 +95,13 @@ class TransitService {
      * @returns {Promise<Array>} Vehicle positions
      */
     async fetchRealTimeData() {
+        console.log('🔍 [DEBUG] fetchRealTimeData called');
+        console.log('🔍 [DEBUG] isSimulationMode:', this.isSimulationMode);
+        console.log('🔍 [DEBUG] API Key available:', !!this.apiKey);
+
         if (this.isSimulationMode) {
             console.log('📡 Simulation mode active - using simulated vehicles');
+            console.warn('⚠️  To use real API, check your API key in js/config.js');
             return this.simulateVehicles(4);
         }
 
@@ -91,29 +111,64 @@ class TransitService {
             // Construct API URL with key
             let apiUrl = `${this.endpoints.primary}?key=${this.apiKey}`;
 
+            console.log('🔍 [DEBUG] Full API URL (key masked):', apiUrl.replace(this.apiKey, '***KEY***'));
+
             // Use CORS proxy if configured
             if (this.config.useCorsProxy) {
+                const originalUrl = apiUrl;
                 apiUrl = this.config.corsProxyUrl + encodeURIComponent(apiUrl);
                 console.log('🔄 Using CORS proxy:', this.config.corsProxyUrl);
+                console.log('🔍 [DEBUG] Proxied URL:', apiUrl.substring(0, 100) + '...');
             }
+
+            console.log('⏳ Calling fetch API...');
+            const fetchStartTime = Date.now();
 
             // Fetch the protobuf data
             const response = await fetch(apiUrl);
+
+            const fetchDuration = Date.now() - fetchStartTime;
+            console.log(`✅ Fetch completed in ${fetchDuration}ms`);
+            console.log('🔍 [DEBUG] Response status:', response.status, response.statusText);
+            console.log('🔍 [DEBUG] Response headers:');
+            console.log('  - Content-Type:', response.headers.get('content-type'));
+            console.log('  - Content-Length:', response.headers.get('content-length'));
 
             if (!response.ok) {
                 throw new Error(`API request failed: ${response.status} ${response.statusText}`);
             }
 
+            console.log('📥 Reading response as ArrayBuffer...');
             // Get response as ArrayBuffer
             const arrayBuffer = await response.arrayBuffer();
+            console.log('✅ ArrayBuffer received, size:', arrayBuffer.byteLength, 'bytes');
 
+            console.log('🔄 Parsing GTFS Realtime protobuf...');
             // Try to parse the protobuf data
             const vehicles = await this.parseGTFSRealtimeProtobuf(arrayBuffer);
+            console.log('✅ Protobuf parsed successfully');
+            console.log('🔍 [DEBUG] Total vehicles parsed:', vehicles.length);
 
+            // Log first few vehicles for debugging
+            if (vehicles.length > 0) {
+                console.log('🔍 [DEBUG] Sample vehicle data (first 3):');
+                vehicles.slice(0, 3).forEach((v, i) => {
+                    console.log(`  ${i + 1}. ID: ${v.id}, Route: ${v.routeId}, Lat: ${v.lat.toFixed(4)}, Lng: ${v.lng.toFixed(4)}`);
+                });
+            }
+
+            console.log('🔍 Filtering for Line 14...');
             // Filter for Line 14 only
             const line14Vehicles = this.filterLine14Vehicles(vehicles);
 
             console.log(`✅ Received ${vehicles.length} total vehicles, ${line14Vehicles.length} on Line 14`);
+
+            if (line14Vehicles.length === 0) {
+                console.warn('⚠️  No Line 14 vehicles found in feed');
+                console.log('🔍 [DEBUG] Available route IDs in feed:');
+                const uniqueRouteIds = [...new Set(vehicles.map(v => v.routeId))].filter(Boolean);
+                console.log('  Route IDs:', uniqueRouteIds.join(', ') || 'None found');
+            }
 
             this.errorCount = 0; // Reset error count on success
             this.lastFetchTime = new Date();
@@ -122,7 +177,12 @@ class TransitService {
 
         } catch (error) {
             console.error('❌ Error fetching real-time data:', error);
+            console.error('🔍 [DEBUG] Error type:', error.name);
+            console.error('🔍 [DEBUG] Error message:', error.message);
+            console.error('🔍 [DEBUG] Error stack:', error.stack);
+
             this.errorCount++;
+            console.warn(`⚠️  Error count: ${this.errorCount}/${this.maxErrors}`);
 
             if (this.errorCount >= this.maxErrors && this.config.enableFallback) {
                 console.warn(`⚠️  Switching to simulation mode after ${this.maxErrors} consecutive errors`);
@@ -130,6 +190,7 @@ class TransitService {
             }
 
             // Return simulated data as fallback
+            console.log('🔄 Returning simulated data as fallback');
             return this.simulateVehicles(4);
         }
     }
