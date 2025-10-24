@@ -1,0 +1,30 @@
+# API Keys and Secrets
+# IMPORTANT: If you commit js/config.js with your API key, it will be publicly visible!
+# Consider using environment variables or a backend proxy for production deployments
+# js/config.js
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+.cache/

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stockholm Tunnelbana Line 14 - Real-time Tracker</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Transit-specific styles */
+        .transit-header {
+            background: linear-gradient(135deg, #ED1C24 0%, #C5050C 100%);
+        }
+
+        .transit-info-panel {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .line-badge {
+            display: inline-block;
+            background: #ED1C24;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .vehicle-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .station-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .station-item {
+            padding: 6px 10px;
+            border-left: 3px solid #ED1C24;
+            margin-bottom: 6px;
+            background: white;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .legend-icon.vehicle {
+            background: #ED1C24;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .legend-icon.station {
+            background: white;
+            border: 3px solid #ED1C24;
+        }
+
+        @media (max-width: 768px) {
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header transit-header">
+            <h1>🚇 Stockholm Tunnelbana Line 14</h1>
+            <p class="subtitle">Real-time vehicle tracking | Fruängen ↔ Mörby centrum</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Transit Info Panel -->
+            <div class="transit-info-panel">
+                <div class="info-row">
+                    <div>
+                        <span class="line-badge">Line 14</span>
+                        <span style="color: #666;">Röda linjen (Red Line)</span>
+                    </div>
+                    <div class="vehicle-count">
+                        <span>🚇</span>
+                        <span><strong id="vehicleCount">0</strong> vehicles tracking</span>
+                    </div>
+                </div>
+
+                <div class="info-row">
+                    <div>
+                        <strong>Route:</strong> 19.5 km | 19 stations<br>
+                        <small style="color: #666;">Operator: SL (Storstockholms Lokaltrafik)</small>
+                    </div>
+                </div>
+
+                <div class="controls-row">
+                    <button id="startTrackingBtn" class="btn btn-primary">
+                        <span class="btn-icon">▶️</span>
+                        Start Real-time Tracking
+                    </button>
+                    <button id="stopTrackingBtn" class="btn btn-primary" style="display: none;">
+                        <span class="btn-icon">⏸️</span>
+                        Stop Tracking
+                    </button>
+                    <button id="fitRouteBtn" class="btn" style="background: #666; color: white;">
+                        <span class="btn-icon">🗺️</span>
+                        Fit to Route
+                    </button>
+                    <button id="toggleStationsBtn" class="btn" style="background: #666; color: white;">
+                        <span class="btn-icon">📍</span>
+                        <span id="stationsToggleText">Show Stations</span>
+                    </button>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-icon vehicle"></span>
+                        <span>Metro Vehicle</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-icon station"></span>
+                        <span>Station</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 30px; height: 3px; background: #ED1C24;"></div>
+                        <span>Route Line</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Section -->
+            <div id="mapContainer" class="map-container">
+                <div id="map"></div>
+            </div>
+
+            <!-- Station List (collapsible) -->
+            <div class="transit-info-panel" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 10px;">📍 Line 14 Stations</h3>
+                <div class="station-list" id="stationList"></div>
+            </div>
+
+            <!-- Raw API Data Viewer (Developer Mode) -->
+            <div class="transit-info-panel" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3>🔧 API Data Viewer (Debug)</h3>
+                    <button id="toggleRawDataBtn" class="btn" style="background: #666; color: white; padding: 6px 12px; font-size: 0.9rem;">
+                        <span id="rawDataToggleText">Show Raw Data</span>
+                    </button>
+                </div>
+
+                <div id="rawDataContainer" style="display: none;">
+                    <!-- Verbose Console Log -->
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>📋 Verbose Console Log (Real-time)</strong>
+                            <button id="clearLogBtn" class="btn" style="background: #ef4444; color: white; padding: 4px 10px; font-size: 0.85rem;">
+                                Clear Log
+                            </button>
+                        </div>
+                        <div id="verboseLog" style="background: #0a0a0a; color: #00ff00; padding: 15px; border-radius: 6px; height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4;">
+                            <div style="color: #888;">
+                                [System] Verbose logging initialized. Waiting for activity...<br>
+                                [System] Click "Start Real-time Tracking" to begin monitoring.<br>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API Status -->
+                    <div style="background: #f0f0f0; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong>API Status:</strong>
+                        <div id="apiStatus" style="margin-top: 8px; font-family: monospace; font-size: 0.9rem;">
+                            Waiting for data...
+                        </div>
+                    </div>
+
+                    <!-- Parsed Vehicle Data -->
+                    <div style="margin-bottom: 15px;">
+                        <strong>Parsed Vehicle Data (Line 14):</strong>
+                        <div style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 8px;">
+                            <pre id="parsedVehicleData" style="margin: 0; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">No data yet. Click "Start Real-time Tracking"</pre>
+                        </div>
+                    </div>
+
+                    <!-- Raw GTFS-RT Data -->
+                    <div style="margin-bottom: 15px;">
+                        <strong>Raw GTFS Realtime Feed (All Vehicles):</strong>
+                        <div style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto; margin-top: 8px; max-height: 400px; overflow-y: auto;">
+                            <pre id="rawGtfsData" style="margin: 0; font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">No raw data available</pre>
+                        </div>
+                    </div>
+
+                    <!-- Last Update Info -->
+                    <div style="background: #e8f4f8; padding: 10px; border-radius: 6px; font-size: 0.9rem;">
+                        <strong>Last Update:</strong> <span id="lastUpdateTime">Never</span><br>
+                        <strong>Data Source:</strong> <span id="dataSource">Unknown</span><br>
+                        <strong>Update Count:</strong> <span id="updateCount">0</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Built with Leaflet.js | Data: SL (Demo Mode) | <a href="location.html" style="color: #3b82f6;">← Back to Location Map</a></p>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- GTFS Realtime Bindings for protobuf parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/gtfs-realtime-bindings@1.1.0/dist/bundle.js"></script>
+
+    <!-- Transit App JS Modules -->
+    <script type="module" src="js/transitApp.js"></script>
+</body>
+</html>
